@@ -5,6 +5,10 @@ use tower_http::services::{ServeDir, ServeFile};
 
 pub mod routes;
 use crate::routes::*;
+pub mod domain;
+use crate::domain::*;
+pub mod services;
+use crate::services::*;
 
 // This struct encapsulates our application-related logic.
 pub struct Application {

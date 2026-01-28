@@ -42,3 +42,21 @@ async fn should_return_422_if_malformed_input() {
         );
     }
 }
+
+#[tokio::test]
+async fn should_return_201_if_valid_input() {
+    let app = TestApp::new().await;
+    let random_email = TestApp::get_random_email();
+    let body = serde_json::json!({
+        "email": random_email,
+        "password": "password123",
+        "requires2FA": true
+    });
+
+    let response = app.post_signup(&body).await;
+    assert_eq!(
+        response.status().as_u16(),
+        201,
+        "Failed to receive 201 for valid signup request"
+    );
+}
