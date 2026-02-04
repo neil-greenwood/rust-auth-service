@@ -9,6 +9,8 @@ pub mod domain;
 use crate::domain::*;
 pub mod services;
 use crate::services::*;
+pub mod app_state;
+use crate::app_state::*;
 
 // This struct encapsulates our application-related logic.
 pub struct Application {
@@ -19,7 +21,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn build(address: &str) -> Result<Self, Box<dyn Error>> {
+    pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
         let assets_dir =
             ServeDir::new("assets").not_found_service(ServeFile::new("assets/index.html"));
         let router = Router::new()
@@ -28,7 +30,8 @@ impl Application {
             .route("/login", post(login_handler))
             .route("/verify-2fa", post(verify_2fa_handler))
             .route("/logout", post(logout_handler))
-            .route("/verify-token", post(verify_token_handler));
+            .route("/verify-token", post(verify_token_handler))
+            .with_state(app_state);
 
         let listener = TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();

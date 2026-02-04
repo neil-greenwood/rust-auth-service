@@ -11,11 +11,17 @@ pub enum UserStoreError {
 }
 
 #[derive(Default)]
-struct HashmapUserStore {
+pub struct HashmapUserStore {
     users: HashMap<String, User>,
 }
 
 impl HashmapUserStore {
+    pub fn new() -> Self {
+        Self {
+            users: HashMap::new(),
+        }
+    }
+
     pub fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
         let id = user.email.clone();
         if self.users.contains_key(&id) {
@@ -36,7 +42,7 @@ impl HashmapUserStore {
     // FIXME: should not differentiate between missing user and invalid password!
     pub fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
         let user = self.get_user(email)?;
-        if user.password != password.to_string() {
+        if user.password != password {
             return Err(UserStoreError::InvalidCredentials);
         }
         Ok(())
@@ -54,9 +60,7 @@ mod tests {
             password: "pwd".to_owned(),
             requires_2fa: true,
         };
-        let mut store = HashmapUserStore {
-            users: HashMap::new(),
-        };
+        let mut store = HashmapUserStore::new();
 
         let result = store.add_user(user);
 
@@ -70,9 +74,7 @@ mod tests {
             password: "pwd".to_owned(),
             requires_2fa: true,
         };
-        let mut store = HashmapUserStore {
-            users: HashMap::new(),
-        };
+        let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {
@@ -89,9 +91,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_get_existing_user() {
-        let mut store = HashmapUserStore {
-            users: HashMap::new(),
-        };
+        let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {
@@ -108,9 +108,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_refuse_to_get_missing_user() {
-        let mut store = HashmapUserStore {
-            users: HashMap::new(),
-        };
+        let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {
@@ -127,9 +125,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_refuse_to_validate_unknown_user() {
-        let mut store = HashmapUserStore {
-            users: HashMap::new(),
-        };
+        let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {
@@ -146,9 +142,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_refuse_to_validate_user_with_incorrect_creds() {
-        let mut store = HashmapUserStore {
-            users: HashMap::new(),
-        };
+        let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {

@@ -1,3 +1,5 @@
+use auth_service::routes::SignupResponse;
+
 use crate::helpers::TestApp;
 
 #[tokio::test]
@@ -54,9 +56,21 @@ async fn should_return_201_if_valid_input() {
     });
 
     let response = app.post_signup(&body).await;
+
     assert_eq!(
         response.status().as_u16(),
         201,
         "Failed to receive 201 for valid signup request"
+    );
+    let expected_response = SignupResponse {
+        message: "User created successfully!".to_owned(),
+    };
+    // Assert that we are getting the correct response body!
+    assert_eq!(
+        response
+            .json::<SignupResponse>()
+            .await
+            .expect("Could not deserialize response body to UserBody"),
+        expected_response
     );
 }
