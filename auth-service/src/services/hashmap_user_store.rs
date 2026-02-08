@@ -1,14 +1,7 @@
 use std::collections::HashMap;
 
 use crate::domain::User;
-
-#[derive(Debug, PartialEq)]
-pub enum UserStoreError {
-    UserAlreadyExists,
-    UserNotFound,
-    InvalidCredentials,
-    UnexpectedError,
-}
+use crate::domain::UserStoreError;
 
 #[derive(Default)]
 pub struct HashmapUserStore {

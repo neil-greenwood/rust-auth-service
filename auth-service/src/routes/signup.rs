@@ -3,8 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, User},
-    services::hashmap_user_store::UserStoreError,
+    domain::{AuthAPIError, User, UserStoreError},
 };
 
 pub async fn signup_handler(
