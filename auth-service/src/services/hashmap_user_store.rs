@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::domain::User;
 use crate::domain::UserStoreError;
+use crate::UserStore;
 
 #[derive(Default)]
 pub struct HashmapUserStore {
@@ -14,8 +15,11 @@ impl HashmapUserStore {
             users: HashMap::new(),
         }
     }
+}
 
-    pub fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
+#[async_trait::async_trait]
+impl UserStore for HashmapUserStore {
+    async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
         let id = user.email.clone();
         if self.users.contains_key(&id) {
             return Err(UserStoreError::UserAlreadyExists);
@@ -24,7 +28,7 @@ impl HashmapUserStore {
         Ok(())
     }
 
-    pub fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
+    async fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
         let result = self.users.get(&email.to_string());
         return match result {
             Some(user) => Ok(user.clone()),
@@ -33,8 +37,8 @@ impl HashmapUserStore {
     }
 
     // FIXME: should not differentiate between missing user and invalid password!
-    pub fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
-        let user = self.get_user(email)?;
+    async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
+        let user = self.get_user(email).await?;
         if user.password != password {
             return Err(UserStoreError::InvalidCredentials);
         }
@@ -55,7 +59,7 @@ mod tests {
         };
         let mut store = HashmapUserStore::new();
 
-        let result = store.add_user(user);
+        let result = store.add_user(user).await;
 
         assert_eq!(result.unwrap(), ());
     }
@@ -77,7 +81,7 @@ mod tests {
             },
         );
 
-        let result = store.add_user(user);
+        let result = store.add_user(user).await;
 
         assert_eq!(result.unwrap_err(), UserStoreError::UserAlreadyExists);
     }
@@ -94,7 +98,7 @@ mod tests {
             },
         );
 
-        let result = store.get_user("email");
+        let result = store.get_user("email").await;
 
         assert_eq!(result.is_ok(), true);
     }
@@ -111,7 +115,7 @@ mod tests {
             },
         );
 
-        let result = store.get_user("id");
+        let result = store.get_user("id").await;
 
         assert_eq!(result.unwrap_err(), UserStoreError::UserNotFound);
     }
@@ -128,7 +132,7 @@ mod tests {
             },
         );
 
-        let result = store.validate_user("unknown", "password");
+        let result = store.validate_user("unknown", "password").await;
 
         assert_eq!(result.unwrap_err(), UserStoreError::UserNotFound);
     }
@@ -145,7 +149,7 @@ mod tests {
             },
         );
 
-        let result = store.validate_user("email", "password");
+        let result = store.validate_user("email", "password").await;
 
         assert_eq!(result.unwrap_err(), UserStoreError::InvalidCredentials);
     }
