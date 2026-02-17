@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use crate::domain::User;
-use crate::domain::UserStoreError;
+use crate::domain::{User, UserStoreError};
 use crate::UserStore;
 
 #[derive(Default)]
@@ -20,7 +19,7 @@ impl HashmapUserStore {
 #[async_trait::async_trait]
 impl UserStore for HashmapUserStore {
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError> {
-        let id = user.email.clone();
+        let id = user.email.address.clone();
         if self.users.contains_key(&id) {
             return Err(UserStoreError::UserAlreadyExists);
         }
@@ -29,7 +28,7 @@ impl UserStore for HashmapUserStore {
     }
 
     async fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
-        let result = self.users.get(&email.to_string());
+        let result = self.users.get(email);
         return match result {
             Some(user) => Ok(user.clone()),
             None => Err(UserStoreError::UserNotFound),
@@ -39,7 +38,7 @@ impl UserStore for HashmapUserStore {
     // FIXME: should not differentiate between missing user and invalid password!
     async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await?;
-        if user.password != password {
+        if user.password.password != password {
             return Err(UserStoreError::InvalidCredentials);
         }
         Ok(())
@@ -48,13 +47,22 @@ impl UserStore for HashmapUserStore {
 
 #[cfg(test)]
 mod tests {
+    use fake::{
+        faker::internet::en::{Password, SafeEmail},
+        Fake,
+    };
+
     use super::*;
+    use crate::domain::Email;
+    use crate::Password as MyPassword;
 
     #[tokio::test]
     async fn should_add_unique_user() {
+        let email = Email::parse(SafeEmail().fake()).unwrap();
+        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
         let user = User {
-            email: "email".to_owned(),
-            password: "pwd".to_owned(),
+            email,
+            password,
             requires_2fa: true,
         };
         let mut store = HashmapUserStore::new();
@@ -66,17 +74,19 @@ mod tests {
 
     #[tokio::test]
     async fn should_refuse_to_add_duplicate_user() {
+        let email = Email::parse(SafeEmail().fake()).unwrap();
+        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
         let user = User {
-            email: "email".to_owned(),
-            password: "pwd".to_owned(),
+            email: email.clone(),
+            password: password.clone(),
             requires_2fa: true,
         };
         let mut store = HashmapUserStore::new();
         store.users.insert(
-            "email".to_owned(),
+            email.address.clone(),
             User {
-                email: "".to_owned(),
-                password: "".to_owned(),
+                email,
+                password,
                 requires_2fa: true,
             },
         );
@@ -88,12 +98,14 @@ mod tests {
 
     #[tokio::test]
     async fn should_get_existing_user() {
+        let email = Email::parse(SafeEmail().fake()).unwrap();
+        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {
-                email: "".to_owned(),
-                password: "".to_owned(),
+                email,
+                password,
                 requires_2fa: true,
             },
         );
@@ -105,12 +117,14 @@ mod tests {
 
     #[tokio::test]
     async fn should_refuse_to_get_missing_user() {
+        let email = Email::parse(SafeEmail().fake()).unwrap();
+        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {
-                email: "".to_owned(),
-                password: "".to_owned(),
+                email,
+                password,
                 requires_2fa: true,
             },
         );
@@ -122,12 +136,14 @@ mod tests {
 
     #[tokio::test]
     async fn should_refuse_to_validate_unknown_user() {
+        let email = Email::parse(SafeEmail().fake()).unwrap();
+        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {
-                email: "".to_owned(),
-                password: "".to_owned(),
+                email,
+                password,
                 requires_2fa: true,
             },
         );
@@ -139,12 +155,14 @@ mod tests {
 
     #[tokio::test]
     async fn should_refuse_to_validate_user_with_incorrect_creds() {
+        let email = Email::parse(SafeEmail().fake()).unwrap();
+        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         store.users.insert(
             "email".to_owned(),
             User {
-                email: "email".to_owned(),
-                password: "secret".to_owned(),
+                email,
+                password,
                 requires_2fa: true,
             },
         );
