@@ -18,6 +18,8 @@ pub mod services;
 use crate::services::*;
 pub mod app_state;
 use crate::app_state::*;
+pub mod utils;
+use crate::utils::*;
 
 // This struct encapsulates our application-related logic.
 pub struct Application {
