@@ -5,10 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::email::Email;
 
-use super::constants::JWT_COOKIE_NAME;
-
-// This is definitely NOT a good secret. We will update it soon!
-const JWT_SECRET: &str = "secret";
+use super::constants::{JWT_COOKIE_NAME, JWT_SECRET};
 
 // Create cookie with a new JWT auth token
 pub fn generate_auth_cookie(email: &Email) -> Result<Cookie<'static>, GenerateTokenError> {
