@@ -1,14 +1,17 @@
 use axum::{
+    http::{Method, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
     serve::Serve,
     Json, Router,
 };
-use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 use tokio::net::TcpListener;
-use tower_http::services::{ServeDir, ServeFile};
+use tower_http::{
+    cors::CorsLayer,
+    services::{ServeDir, ServeFile},
+};
 
 pub mod routes;
 use crate::routes::*;
@@ -31,6 +34,14 @@ pub struct Application {
 
 impl Application {
     pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
+        // Allow the app service (running on our local machine) to call the auth service
+        let allowed_origins = ["http://localhost:8000".parse()?];
+        let cors = CorsLayer::new()
+            // Allow GET and POST requests
+            .allow_methods([Method::GET, Method::POST])
+            // Allow cookies to be included in requests
+            .allow_credentials(true)
+            .allow_origin(allowed_origins);
         let assets_dir =
             ServeDir::new("assets").not_found_service(ServeFile::new("assets/index.html"));
         let router = Router::new()
@@ -40,7 +51,8 @@ impl Application {
             .route("/verify-2fa", post(verify_2fa_handler))
             .route("/logout", post(logout_handler))
             .route("/verify-token", post(verify_token_handler))
-            .with_state(app_state);
+            .with_state(app_state)
+            .layer(cors); // Add CORS config to our Axum router
 
         let listener = TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
