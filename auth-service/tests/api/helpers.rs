@@ -1,5 +1,6 @@
 use auth_service::{
-    app_state::AppState, services::hashmap_user_store::HashmapUserStore, Application,
+    app_state::AppState, services::hashmap_user_store::HashmapUserStore, utils::constants::test,
+    Application,
 };
 use reqwest::{cookie::Jar, Client};
 use std::sync::Arc;
@@ -16,7 +17,7 @@ impl TestApp {
     pub async fn new() -> Self {
         let user_store = HashmapUserStore::new();
         let app_state = AppState::new(Arc::new(RwLock::new(user_store)));
-        let app = Application::build(app_state, "127.0.0.1:0")
+        let app = Application::build(app_state, test::APP_ADDRESS)
             .await
             .expect("Failed to build app");
 

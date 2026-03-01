@@ -17,12 +17,10 @@ pub mod routes;
 use crate::routes::*;
 pub mod domain;
 use crate::domain::*;
-pub mod services;
-use crate::services::*;
 pub mod app_state;
 use crate::app_state::*;
+pub mod services;
 pub mod utils;
-use crate::utils::*;
 
 // This struct encapsulates our application-related logic.
 pub struct Application {

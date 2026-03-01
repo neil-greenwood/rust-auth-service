@@ -16,13 +16,7 @@ pub async fn signup_handler(
     let Ok(password) = Password::parse(request.password) else {
         return Err(AuthAPIError::InvalidCredentials);
     };
-
-    // Create a new `User` instance using the data in the `request`
-    let user = User {
-        email,
-        password,
-        requires_2fa: request.requires_2fa,
-    };
+    let user = User::new(email, password, request.requires_2fa);
 
     let mut user_store = state.user_store.write().await;
 
