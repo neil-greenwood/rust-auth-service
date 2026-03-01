@@ -1,13 +1,14 @@
 use auth_service::{
     app_state::AppState, services::hashmap_user_store::HashmapUserStore, Application,
 };
-use reqwest::Client;
+use reqwest::{cookie::Jar, Client};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 pub struct TestApp {
     pub address: String,
+    pub cookie_jar: Arc<Jar>,
     pub http_client: Client,
 }
 
@@ -26,13 +27,16 @@ impl TestApp {
         #[allow(clippy::let_underscore_future)]
         let _ = tokio::spawn(app.run());
 
+        let cookie_jar = Arc::new(Jar::default());
         let http_client = Client::builder()
+            .cookie_provider(cookie_jar.clone())
             .build()
             .expect("Failed to build HTTP client");
 
         // Create new `TestApp` instance and return it
         Self {
             address,
+            cookie_jar,
             http_client,
         }
     }

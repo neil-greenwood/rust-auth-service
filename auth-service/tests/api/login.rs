@@ -1,4 +1,4 @@
-use auth_service::{utils::constants::JWT_COOKIE_NAME, ErrorResponse};
+use auth_service::utils::constants::JWT_COOKIE_NAME;
 
 use crate::helpers::TestApp;
 
