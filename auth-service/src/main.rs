@@ -1,5 +1,9 @@
 use auth_service::{
-    app_state::AppState, services::hashmap_user_store::HashmapUserStore, utils::constants::prod,
+    app_state::AppState,
+    services::{
+        hashmap_user_store::HashmapUserStore, hashset_banned_token_store::HashsetBannedTokenStore,
+    },
+    utils::constants::prod,
     Application,
 };
 use std::sync::Arc;
@@ -8,7 +12,11 @@ use tokio::sync::RwLock;
 #[tokio::main]
 async fn main() {
     let user_store = HashmapUserStore::new();
-    let app_state = AppState::new(Arc::new(RwLock::new(user_store)));
+    let banned_token_store = HashsetBannedTokenStore::default();
+    let app_state = AppState::new(
+        Arc::new(RwLock::new(user_store)),
+        Arc::new(RwLock::new(banned_token_store)),
+    );
 
     // Here we are using ip 0.0.0.0 so the service is listening on all the configured network interfaces.
     // This is needed for Docker to work, which we will add later on.

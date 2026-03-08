@@ -31,13 +31,42 @@ async fn should_return_401_if_invalid_token() {
 #[tokio::test]
 async fn should_return_200_if_valid_jwt_cookie() {
     let app = TestApp::new().await;
-    login_random_user(&app).await;
+    let random_email = TestApp::get_random_email();
+    let signup_body = serde_json::json!({
+        "email": random_email,
+        "password": "password123",
+        "requires2FA": false
+    });
+    let login_body = serde_json::json!({
+        "email": random_email,
+        "password": "password123",
+    });
+    let _ = app.post_signup(&signup_body).await;
+    let response = app.post_login(&login_body).await;
+    let auth_cookie = response
+        .cookies()
+        .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
+        .expect("No auth cookie found");
+    let token = auth_cookie.value();
 
     let response = app.post_logout().await;
     assert_eq!(response.status().as_u16(), 200);
+    let auth_cookie = response
+        .cookies()
+        .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
+        .expect("No auth cookie found");
+    assert!(auth_cookie.value().is_empty());
+    let banned_token_store = app.banned_tokens.read().await;
+    let contains_token = banned_token_store
+        .check_token(token)
+        .await
+        .expect("Failed to check that token store contains logged out token");
+    assert!(contains_token);
 }
 
-async fn login_random_user(app: &TestApp) {
+#[tokio::test]
+async fn should_return_400_if_logout_called_more_than_once() {
+    let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
     let signup_body = serde_json::json!({
         "email": random_email,
@@ -50,12 +79,6 @@ async fn login_random_user(app: &TestApp) {
     });
     let _ = app.post_signup(&signup_body).await;
     let _ = app.post_login(&login_body).await;
-}
-
-#[tokio::test]
-async fn should_return_400_if_logout_called_more_than_once() {
-    let app = TestApp::new().await;
-    login_random_user(&app).await;
 
     let _ = app.post_logout().await;
     let response = app.post_logout().await;
