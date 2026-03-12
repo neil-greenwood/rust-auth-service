@@ -16,9 +16,21 @@ pub async fn logout_handler(
     };
 
     let token = cookie.value().to_owned();
-    let Ok(result) = validate_token(&token).await else {
+    let banned_tokens = state.banned_tokens.clone();
+    let Ok(result) = validate_token(&token, banned_tokens).await else {
         return (jar, Err(AuthAPIError::InvalidToken));
     };
+    if state
+        .banned_tokens
+        .write()
+        .await
+        .add_token(token.to_owned())
+        .await
+        .is_err()
+    {
+        return (jar, Err(AuthAPIError::UnexpectedError));
+    }
+
     let jar = jar.remove(cookie::Cookie::from(JWT_COOKIE_NAME));
     let mut token_store = state.banned_tokens.write().await;
     if token_store.add_token(token).await.is_err() {
