@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, Password, UserStoreError},
+    domain::{AuthAPIError, Email, Password},
     utils::auth::generate_auth_cookie,
 };
 
@@ -34,15 +34,8 @@ pub async fn login_handler(
 
     let user_store = state.user_store.read().await;
 
-    let result = user_store
-        .validate_user(&email.address, &password.password)
-        .await;
-    if result.is_err() {
-        let error = result.unwrap_err();
-        if error == UserStoreError::InvalidCredentials || error == UserStoreError::UserNotFound {
-            return (jar, Err(AuthAPIError::IncorrectCredentials));
-        }
-        return (jar, Err(AuthAPIError::UnexpectedError));
+    if user_store.validate_user(&email, &password).await.is_err() {
+        return (jar, Err(AuthAPIError::IncorrectCredentials));
     }
 
     // call the generate_auth_cookie function.

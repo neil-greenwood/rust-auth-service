@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::domain::{User, UserStoreError};
-use crate::UserStore;
+use crate::{Email, Password, UserStore};
 
 #[derive(Default)]
 pub struct HashmapUserStore {
@@ -35,10 +35,15 @@ impl UserStore for HashmapUserStore {
         };
     }
 
-    // FIXME: should not differentiate between missing user and invalid password!
-    async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
-        let user = self.get_user(email).await?;
-        if user.password.password != password {
+    async fn validate_user(
+        &self,
+        email: &Email,
+        password: &Password,
+    ) -> Result<(), UserStoreError> {
+        let Ok(user) = self.get_user(&email.address).await else {
+            return Err(UserStoreError::InvalidCredentials);
+        };
+        if user.password.password != password.password {
             return Err(UserStoreError::InvalidCredentials);
         }
         Ok(())
@@ -140,7 +145,7 @@ mod tests {
         let password = MyPassword::parse(Password(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         store.users.insert(
-            "email".to_owned(),
+            email.address.clone(),
             User {
                 email,
                 password,
@@ -148,9 +153,13 @@ mod tests {
             },
         );
 
-        let result = store.validate_user("unknown", "password").await;
+        let actual_email = Email::parse(SafeEmail().fake()).unwrap();
+        let actual_password = MyPassword {
+            password: "password".to_owned(),
+        };
+        let result = store.validate_user(&actual_email, &actual_password).await;
 
-        assert_eq!(result.unwrap_err(), UserStoreError::UserNotFound);
+        assert_eq!(result.unwrap_err(), UserStoreError::InvalidCredentials);
     }
 
     #[tokio::test]
@@ -159,15 +168,19 @@ mod tests {
         let password = MyPassword::parse(Password(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         store.users.insert(
-            "email".to_owned(),
+            email.address.clone(),
             User {
-                email,
+                email: email.clone(),
                 password,
                 requires_2fa: true,
             },
         );
 
-        let result = store.validate_user("email", "password").await;
+        let actual_email = &email;
+        let actual_password = MyPassword {
+            password: "password".to_owned(),
+        };
+        let result = store.validate_user(actual_email, &actual_password).await;
 
         assert_eq!(result.unwrap_err(), UserStoreError::InvalidCredentials);
     }
