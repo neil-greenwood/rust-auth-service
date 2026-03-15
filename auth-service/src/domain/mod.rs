@@ -1,8 +1,8 @@
-mod data_stores;
+pub mod data_stores;
 pub mod email;
-mod error;
-mod password;
-mod user;
+pub mod error;
+pub mod password;
+pub mod user;
 
 // re-export items from sub-modules
 pub use data_stores::*;
