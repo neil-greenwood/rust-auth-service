@@ -54,18 +54,18 @@ impl UserStore for HashmapUserStore {
 #[cfg(test)]
 mod tests {
     use fake::{
-        faker::internet::en::{Password, SafeEmail},
+        faker::internet::en::{Password as FakePassword, SafeEmail},
         Fake,
     };
 
     use super::*;
     use crate::domain::Email;
-    use crate::Password as MyPassword;
+    use crate::domain::Password;
 
     #[tokio::test]
     async fn should_add_unique_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
+        let password = Password::parse(FakePassword(10..12).fake()).unwrap();
         let user = User {
             email,
             password,
@@ -81,7 +81,7 @@ mod tests {
     #[tokio::test]
     async fn should_refuse_to_add_duplicate_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
+        let password = Password::parse(FakePassword(10..12).fake()).unwrap();
         let user = User {
             email: email.clone(),
             password: password.clone(),
@@ -105,7 +105,7 @@ mod tests {
     #[tokio::test]
     async fn should_get_existing_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
+        let password = Password::parse(FakePassword(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         let user = User {
             email: email.clone(),
@@ -122,7 +122,7 @@ mod tests {
     #[tokio::test]
     async fn should_refuse_to_get_missing_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
+        let password = Password::parse(FakePassword(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         let user = User {
             email: email.clone(),
@@ -141,7 +141,7 @@ mod tests {
     #[tokio::test]
     async fn should_refuse_to_validate_unknown_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
+        let password = Password::parse(FakePassword(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         let user = User {
             email: email.clone(),
@@ -151,7 +151,7 @@ mod tests {
         store.users.insert(email.clone(), user.clone());
 
         let actual_email = Email::parse(SafeEmail().fake()).unwrap();
-        let actual_password = MyPassword {
+        let actual_password = Password {
             password: "password".to_owned(),
         };
         let result = store.validate_user(&actual_email, &actual_password).await;
@@ -162,7 +162,7 @@ mod tests {
     #[tokio::test]
     async fn should_refuse_to_validate_user_with_incorrect_creds() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = MyPassword::parse(Password(10..12).fake()).unwrap();
+        let password = Password::parse(FakePassword(10..12).fake()).unwrap();
         let mut store = HashmapUserStore::new();
         let user = User {
             email: email.clone(),
@@ -171,7 +171,7 @@ mod tests {
         };
         store.users.insert(email.clone(), user.clone());
 
-        let actual_password = MyPassword {
+        let actual_password = Password {
             password: "password".to_owned(),
         };
         let result = store.validate_user(&email, &actual_password).await;
