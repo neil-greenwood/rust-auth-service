@@ -1,7 +1,8 @@
 use auth_service::{
-    app_state::{AppState, BannedTokenStoreType},
+    app_state::{AppState, BannedTokenStoreType, TwoFACodeStoreType},
     services::{
-        hashmap_user_store::HashmapUserStore, hashset_banned_token_store::HashsetBannedTokenStore,
+        hashmap_2fa_code_store::HashmapTwoFACodeStore, hashmap_user_store::HashmapUserStore,
+        hashset_banned_token_store::HashsetBannedTokenStore,
     },
     utils::constants::test,
     Application,
@@ -16,13 +17,15 @@ pub struct TestApp {
     pub cookie_jar: Arc<Jar>,
     pub http_client: Client,
     pub banned_tokens: BannedTokenStoreType,
+    pub two_fa_codes: TwoFACodeStoreType,
 }
 
 impl TestApp {
     pub async fn new() -> Self {
-        let user_store = HashmapUserStore::new();
+        let user_store = Arc::new(RwLock::new(HashmapUserStore::new()));
         let banned_tokens = Arc::new(RwLock::new(HashsetBannedTokenStore::default()));
-        let app_state = AppState::new(Arc::new(RwLock::new(user_store)), banned_tokens.clone());
+        let two_fa_codes = Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
+        let app_state = AppState::new(user_store, banned_tokens.clone(), two_fa_codes.clone());
         let app = Application::build(app_state, test::APP_ADDRESS)
             .await
             .expect("Failed to build app");
@@ -46,6 +49,7 @@ impl TestApp {
             cookie_jar,
             http_client,
             banned_tokens,
+            two_fa_codes,
         }
     }
 
