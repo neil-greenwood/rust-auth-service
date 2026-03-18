@@ -2,7 +2,7 @@ use auth_service::{
     app_state::{AppState, BannedTokenStoreType, TwoFACodeStoreType},
     services::{
         hashmap_2fa_code_store::HashmapTwoFACodeStore, hashmap_user_store::HashmapUserStore,
-        hashset_banned_token_store::HashsetBannedTokenStore,
+        hashset_banned_token_store::HashsetBannedTokenStore, mock_email_client::MockEmailClient,
     },
     utils::constants::test,
     Application,
@@ -25,7 +25,13 @@ impl TestApp {
         let user_store = Arc::new(RwLock::new(HashmapUserStore::new()));
         let banned_tokens = Arc::new(RwLock::new(HashsetBannedTokenStore::default()));
         let two_fa_codes = Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
-        let app_state = AppState::new(user_store, banned_tokens.clone(), two_fa_codes.clone());
+        let email_client = Arc::new(RwLock::new(MockEmailClient {}));
+        let app_state = AppState::new(
+            user_store,
+            banned_tokens.clone(),
+            two_fa_codes.clone(),
+            email_client.clone(),
+        );
         let app = Application::build(app_state, test::APP_ADDRESS)
             .await
             .expect("Failed to build app");
