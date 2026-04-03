@@ -64,7 +64,7 @@ async fn should_return_400_if_invalid_input() {
 }
 
 #[tokio::test]
-async fn should_return_401_if_credentials_are_not_correct() {
+async fn should_return_400_if_credentials_are_not_correct() {
     let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
     let signup = serde_json::json!({
@@ -82,7 +82,7 @@ async fn should_return_401_if_credentials_are_not_correct() {
 
         assert_eq!(
             response.status().as_u16(),
-            401,
+            400,
             "Failed for input: {:?}",
             test_case
         );

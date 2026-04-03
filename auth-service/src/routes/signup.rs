@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     app_state::AppState,
-    domain::{AuthAPIError, Email, Password, User, UserStoreError},
+    domain::{AuthAPIError, Email, HashedPassword, User, UserStoreError},
 };
 
 pub async fn signup_handler(
@@ -13,7 +13,7 @@ pub async fn signup_handler(
     let Ok(email) = Email::parse(request.email) else {
         return Err(AuthAPIError::InvalidCredentials);
     };
-    let Ok(password) = Password::parse(request.password) else {
+    let Ok(password) = HashedPassword::parse(request.password).await else {
         return Err(AuthAPIError::InvalidCredentials);
     };
     let user = User::new(email, password, request.requires_2fa);

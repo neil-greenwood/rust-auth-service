@@ -1,5 +1,5 @@
 use auth_service::{
-    domain::{Email, LoginAttemptId, Password, TwoFACode},
+    domain::{Email, LoginAttemptId, HashedPassword, TwoFACode},
     utils::constants::JWT_COOKIE_NAME,
 };
 use fake::{faker::internet::en::Password as FakePassword, Fake};
@@ -55,7 +55,7 @@ async fn should_return_400_if_invalid_input() {
 async fn should_return_401_if_incorrect_credentials() {
     let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
-    let password = Password::parse(FakePassword(10..12).fake()).unwrap();
+    let password = HashedPassword::parse(FakePassword(10..12).fake()).await.unwrap();
     let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
     let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
     app.post_signup(&signup_request).await;
@@ -82,7 +82,7 @@ async fn should_return_401_if_old_code() {
     // the first login request. This should fail.
     let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
-    let password = Password::parse(FakePassword(10..12).fake()).unwrap();
+    let password = HashedPassword::parse(FakePassword(10..12).fake()).await.unwrap();
     let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
     let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
     app.post_signup(&signup_request).await;
@@ -109,7 +109,7 @@ async fn should_return_401_if_old_code() {
 async fn should_return_200_if_credentials_are_valid() {
     let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
-    let password = Password::parse(FakePassword(10..12).fake()).unwrap();
+    let password = HashedPassword::parse(FakePassword(10..12).fake()).await.unwrap();
     let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
     let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
     app.post_signup(&signup_request).await;
