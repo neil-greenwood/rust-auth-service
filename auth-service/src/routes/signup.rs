@@ -20,11 +20,11 @@ pub async fn signup_handler(
 
     let mut user_store = state.user_store.write().await;
 
-    let result = user_store.add_user(user).await;
-    if result.is_err() {
-        if result.unwrap_err() == UserStoreError::UserAlreadyExists {
-            return Err(AuthAPIError::UserAlreadyExists);
-        }
+    if user_store.get_user(&user.email).await.is_ok() {
+        return Err(AuthAPIError::UserAlreadyExists);
+    }
+
+    if user_store.add_user(user).await.is_err() {
         return Err(AuthAPIError::UnexpectedError);
     }
 
