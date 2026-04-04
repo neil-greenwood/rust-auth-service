@@ -28,3 +28,4 @@ validator = { version ="0.20.0", features = ["derive"] }
 fake = { version = "=4.4.0", features = ["uuid"] }
 quickcheck = "1.0.3"
 quickcheck_macros = "1.1.0"
+test_helpers = { git = "https://github.com/letsgetrusty/test-helpers.git" }

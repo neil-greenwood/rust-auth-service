@@ -1,14 +1,14 @@
 use auth_service::{
-    domain::{Email, LoginAttemptId, HashedPassword, TwoFACode},
+    domain::{Email, HashedPassword, LoginAttemptId, TwoFACode},
     utils::constants::JWT_COOKIE_NAME,
 };
 use fake::{faker::internet::en::Password as FakePassword, Fake};
+use test_helpers::api_test;
 
 use crate::helpers::TestApp;
 
-#[tokio::test]
+#[api_test]
 async fn should_return_422_if_malformed_input() {
-    let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
     let login_attempt_id = LoginAttemptId::default();
     let test_cases = [
@@ -28,9 +28,8 @@ async fn should_return_422_if_malformed_input() {
     }
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_400_if_invalid_input() {
-    let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
     let login_attempt_id = LoginAttemptId::default().as_ref().to_owned();
     let two_fa_code = TwoFACode::default().as_ref().to_owned();
@@ -51,11 +50,12 @@ async fn should_return_400_if_invalid_input() {
     }
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_incorrect_credentials() {
-    let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
-    let password = HashedPassword::parse(FakePassword(10..12).fake()).await.unwrap();
+    let password = HashedPassword::parse(FakePassword(10..12).fake())
+        .await
+        .unwrap();
     let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
     let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
     app.post_signup(&signup_request).await;
@@ -76,13 +76,14 @@ async fn should_return_401_if_incorrect_credentials() {
     assert_eq!(response.status().as_u16(), 401);
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_401_if_old_code() {
     // Call login twice. Then attempt to call verify-2fa with the 2FA code from
     // the first login request. This should fail.
-    let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
-    let password = HashedPassword::parse(FakePassword(10..12).fake()).await.unwrap();
+    let password = HashedPassword::parse(FakePassword(10..12).fake())
+        .await
+        .unwrap();
     let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
     let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
     app.post_signup(&signup_request).await;
@@ -105,11 +106,12 @@ async fn should_return_401_if_old_code() {
     assert_eq!(response.status().as_u16(), 401);
 }
 
-#[tokio::test]
+#[api_test]
 async fn should_return_200_if_credentials_are_valid() {
-    let app = TestApp::new().await;
     let random_email = TestApp::get_random_email();
-    let password = HashedPassword::parse(FakePassword(10..12).fake()).await.unwrap();
+    let password = HashedPassword::parse(FakePassword(10..12).fake())
+        .await
+        .unwrap();
     let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
     let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
     app.post_signup(&signup_request).await;
