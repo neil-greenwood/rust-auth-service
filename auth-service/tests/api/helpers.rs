@@ -5,6 +5,7 @@ use auth_service::{
         hashmap_2fa_code_store::HashmapTwoFACodeStore, hashmap_user_store::HashmapUserStore,
         hashset_banned_token_store::HashsetBannedTokenStore, mock_email_client::MockEmailClient,
         postgrep_user_store::PostgresUserStore, redis_banned_token_store::RedisBannedTokenStore,
+        redis_two_fa_code_store::RedisTwoFACodeStore,
     },
     utils::constants::{test, DATABASE_URL, DEFAULT_REDIS_HOSTNAME},
     Application,
@@ -78,7 +79,7 @@ impl TestApp {
         let banned_tokens = Arc::new(RwLock::new(RedisBannedTokenStore::new(
             redis_connection.clone(),
         )));
-        let two_fa_codes = Arc::new(RwLock::new(HashmapTwoFACodeStore::default()));
+        let two_fa_codes = Arc::new(RwLock::new(RedisTwoFACodeStore::new(redis_connection)));
         let email_client = Arc::new(RwLock::new(MockEmailClient {}));
         let app_state = AppState::new(
             user_store,
