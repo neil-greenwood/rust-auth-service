@@ -39,18 +39,22 @@ impl HashedPassword {
         }
     }
 
+    #[tracing::instrument(name = "Verify raw password", skip_all)]
     pub async fn verify_raw_password(
         &self,
         password_candidate: &str,
     ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let current_span: tracing::Span = tracing::Span::current();
         let password_hash = self.as_ref().to_string();
         let password_candidate = password_candidate.to_string();
         let result = tokio::task::spawn_blocking(move || {
-            let expected_password_hash: PasswordHash<'_> = PasswordHash::new(&password_hash)?;
+            current_span.in_scope(|| {
+                let expected_password_hash: PasswordHash<'_> = PasswordHash::new(&password_hash)?;
 
-            Argon2::default()
-                .verify_password(password_candidate.as_bytes(), &expected_password_hash)
-                .map_err(|e| e.into())
+                Argon2::default()
+                    .verify_password(password_candidate.as_bytes(), &expected_password_hash)
+                    .map_err(|e| e.into())
+            })
         })
         .await;
         result?
@@ -63,19 +67,23 @@ impl AsRef<str> for HashedPassword {
     }
 }
 
+#[tracing::instrument(name = "Computing password hash", skip_all)]
 pub async fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
+    let current_span: tracing::Span = tracing::Span::current();
     let password = password.to_string();
     let result = tokio::task::spawn_blocking(move || {
-        let salt: SaltString = SaltString::generate(&mut OsRng);
-        let password_hash = Argon2::new(
-            Algorithm::Argon2id,
-            Version::V0x13,
-            Params::new(15_000, 2, 1, None)?,
-        )
-        .hash_password(password.as_bytes(), &salt)?
-        .to_string();
+        current_span.in_scope(|| {
+            let salt: SaltString = SaltString::generate(&mut OsRng);
+            let password_hash = Argon2::new(
+                Algorithm::Argon2id,
+                Version::V0x13,
+                Params::new(15_000, 2, 1, None)?,
+            )
+            .hash_password(password.as_bytes(), &salt)?
+            .to_string();
 
-        Ok(password_hash)
+            Ok(password_hash)
+        })
     })
     .await?;
 
