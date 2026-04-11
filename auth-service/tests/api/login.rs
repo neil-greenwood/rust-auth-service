@@ -1,5 +1,5 @@
 use auth_service::{
-    domain::Email, routes::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME,
+    domain::Email, routes::login::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME,
 };
 use test_helpers::api_test;
 

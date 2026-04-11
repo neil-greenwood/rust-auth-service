@@ -28,7 +28,7 @@ pub struct TwoFactorAuthResponse {
     pub login_attempt_id: String,
 }
 
-// #[axum::debug_handler]
+#[tracing::instrument(name = "Login", skip_all)]
 pub async fn login_handler(
     State(state): State<AppState>,
     jar: CookieJar,
@@ -58,6 +58,7 @@ pub async fn login_handler(
     }
 }
 
+#[tracing::instrument(name = "handle login with 2FA", skip_all)]
 async fn handle_2fa(
     email: &Email,
     state: &AppState,
@@ -69,26 +70,24 @@ async fn handle_2fa(
     let login_attempt_id = LoginAttemptId::default();
     let two_fa_code = TwoFACode::default();
 
-    if state
+    if let Err(e) = state
         .two_fa_codes
         .write()
         .await
         .add_code(email.clone(), login_attempt_id.clone(), two_fa_code.clone())
         .await
-        .is_err()
     {
-        return (jar, Err(AuthAPIError::UnexpectedError));
+        return (jar, Err(AuthAPIError::UnexpectedError(e.into())));
     }
 
-    if state
+    if let Err(e) = state
         .email_client
         .read()
         .await
         .send_email(email, "2FA Code", two_fa_code.as_ref())
         .await
-        .is_err()
     {
-        return (jar, Err(AuthAPIError::UnexpectedError));
+        return (jar, Err(AuthAPIError::UnexpectedError(e)));
     }
 
     (
@@ -103,6 +102,7 @@ async fn handle_2fa(
     )
 }
 
+#[tracing::instrument(name = "handle login without 2FA", skip_all)]
 async fn handle_no_2fa(
     email: &Email,
     jar: CookieJar,
@@ -110,8 +110,9 @@ async fn handle_no_2fa(
     CookieJar,
     Result<(StatusCode, Json<LoginResponse>), AuthAPIError>,
 ) {
-    let Ok(auth_cookie) = generate_auth_cookie(&email) else {
-        return (jar, Err(AuthAPIError::UnexpectedError));
+    let auth_cookie = match generate_auth_cookie(&email) {
+        Ok(cookie) => cookie,
+        Err(e) => return (jar, Err(AuthAPIError::UnexpectedError(e))),
     };
 
     let updated_jar = jar.add(auth_cookie);

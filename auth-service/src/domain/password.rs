@@ -1,9 +1,8 @@
-use std::error::Error;
-
 use argon2::{
     password_hash::{rand_core::OsRng, SaltString},
     Algorithm, Argon2, Params, PasswordHash, PasswordHasher, PasswordVerifier, Version,
 };
+use color_eyre::eyre::{eyre, Context, Result};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct HashedPassword {
@@ -11,39 +10,36 @@ pub struct HashedPassword {
 }
 
 impl HashedPassword {
-    pub async fn parse_str(input: &str) -> Result<HashedPassword, String> {
+    pub async fn parse_str(input: &str) -> Result<HashedPassword> {
         Self::parse(input.to_owned()).await
     }
 
-    pub async fn parse(input: String) -> Result<HashedPassword, String> {
+    pub async fn parse(input: String) -> Result<HashedPassword> {
         if input.len() >= 8 {
             if let Ok(password_hash) = compute_password_hash(input.as_ref()).await {
                 Ok(HashedPassword {
                     password: password_hash,
                 })
             } else {
-                Err("Failed to hash password".to_string())
+                Err(eyre!("Failed to hash password"))
             }
         } else {
-            Err("Failed to parse string to a HashedPassword type".to_string())
+            Err(eyre!("Failed to parse string to a HashedPassword type"))
         }
     }
 
-    pub fn parse_password_hash(hash: String) -> Result<HashedPassword, String> {
+    pub fn parse_password_hash(hash: String) -> Result<HashedPassword> {
         if let Ok(hashed_string) = PasswordHash::new(hash.as_ref()) {
             Ok(HashedPassword {
                 password: hashed_string.to_string(),
             })
         } else {
-            Err("Failed to parse string to a HashedPassword type".to_string())
+            Err(eyre!("Failed to parse string to a HashedPassword type"))
         }
     }
 
     #[tracing::instrument(name = "Verify raw password", skip_all)]
-    pub async fn verify_raw_password(
-        &self,
-        password_candidate: &str,
-    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+    pub async fn verify_raw_password(&self, password_candidate: &str) -> Result<()> {
         let current_span: tracing::Span = tracing::Span::current();
         let password_hash = self.as_ref().to_string();
         let password_candidate = password_candidate.to_string();
@@ -53,7 +49,7 @@ impl HashedPassword {
 
                 Argon2::default()
                     .verify_password(password_candidate.as_bytes(), &expected_password_hash)
-                    .map_err(|e| e.into())
+                    .wrap_err("failed to verify password hash")
             })
         })
         .await;
@@ -68,7 +64,7 @@ impl AsRef<str> for HashedPassword {
 }
 
 #[tracing::instrument(name = "Computing password hash", skip_all)]
-pub async fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error + Send + Sync>> {
+pub async fn compute_password_hash(password: &str) -> Result<String> {
     let current_span: tracing::Span = tracing::Span::current();
     let password = password.to_string();
     let result = tokio::task::spawn_blocking(move || {
@@ -130,7 +126,7 @@ mod tests {
         let argon2 = Argon2::new(
             Algorithm::Argon2id,
             Version::V0x13,
-            Params::new(15000, 2, 1, None).unwrap(),
+            Params::new(15_000, 2, 1, None).unwrap(),
         );
         let hash_string = argon2
             .hash_password(raw_password.as_bytes(), &salt)
@@ -150,7 +146,7 @@ mod tests {
         let argon2 = Argon2::new(
             Algorithm::Argon2id,
             Version::V0x13,
-            Params::new(15000, 2, 1, None).unwrap(),
+            Params::new(15_000, 2, 1, None).unwrap(),
         );
         let hash_string = argon2
             .hash_password(raw_password.as_bytes(), &salt)
@@ -160,7 +156,7 @@ mod tests {
         let hash_password = HashedPassword::parse_password_hash(hash_string.clone()).unwrap();
 
         assert_eq!(hash_password.as_ref(), hash_string.as_str());
-        assert!(hash_password.as_ref().starts_with("$argon2id$v=19$"));
+        assert!(hash_password.as_ref().starts_with("$argon2id$v=19$m=15000"));
 
         let result = hash_password
             .verify_raw_password(raw_password)

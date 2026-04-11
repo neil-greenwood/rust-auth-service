@@ -1,9 +1,10 @@
+use color_eyre::eyre::{eyre, Context, Report, Result};
 use rand::Rng;
 use serde::Serialize;
+use thiserror::Error;
 use uuid::Uuid;
 
-use super::User;
-use crate::Email;
+use super::{Email, User};
 
 #[async_trait::async_trait]
 pub trait UserStore {
@@ -12,12 +13,28 @@ pub trait UserStore {
     async fn validate_user(&self, email: &Email, raw_password: &str) -> Result<(), UserStoreError>;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Error)]
 pub enum UserStoreError {
+    #[error("User already exists")]
     UserAlreadyExists,
+    #[error("User not found")]
     UserNotFound,
+    #[error("Invalid credentials")]
     InvalidCredentials,
-    UnexpectedError,
+    #[error("Unexpected error")]
+    UnexpectedError(#[source] Report),
+}
+
+impl PartialEq for UserStoreError {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::UserAlreadyExists, Self::UserAlreadyExists)
+                | (Self::UserNotFound, Self::UserNotFound)
+                | (Self::InvalidCredentials, Self::InvalidCredentials)
+                | (Self::UnexpectedError(_), Self::UnexpectedError(_))
+        )
+    }
 }
 
 #[async_trait::async_trait]
@@ -26,9 +43,10 @@ pub trait BannedTokenStore {
     async fn check_token(&self, token: &str) -> Result<bool, BannedTokenStoreError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum BannedTokenStoreError {
-    UnexpectedError,
+    #[error("Unexpected error")]
+    UnexpectedError(#[source] Report),
 }
 
 #[async_trait::async_trait]
@@ -46,19 +64,30 @@ pub trait TwoFACodeStore {
     ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError>;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Error)]
 pub enum TwoFACodeStoreError {
+    #[error("Login Attempt ID not found")]
     LoginAttemptIdNotFound,
-    UnexpectedError,
+    #[error("Unexpected error")]
+    UnexpectedError(#[source] Report),
+}
+
+impl PartialEq for TwoFACodeStoreError {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::LoginAttemptIdNotFound, Self::LoginAttemptIdNotFound)
+                | (Self::UnexpectedError(_), Self::UnexpectedError(_))
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct LoginAttemptId(String);
 
 impl LoginAttemptId {
-    pub fn parse(id: String) -> Result<Self, String> {
-        let parsed_value =
-            Uuid::parse_str(&id).map_err(|_| "Invalid login attempt ID".to_owned())?;
+    pub fn parse(id: String) -> Result<Self> {
+        let parsed_value = Uuid::parse_str(&id).wrap_err("Invalid login attempt ID")?;
         Ok(Self(parsed_value.to_string()))
     }
 }
@@ -79,14 +108,12 @@ impl AsRef<str> for LoginAttemptId {
 pub struct TwoFACode(String);
 
 impl TwoFACode {
-    pub fn parse(code: String) -> Result<Self, String> {
-        let _code_as_u32 = code
-            .parse::<u32>()
-            .map_err(|_| "Invalid 2FA code".to_owned())?;
+    pub fn parse(code: String) -> Result<Self> {
+        let _code_as_u32 = code.parse::<u32>().wrap_err("Invalid 2FA code")?;
         if code.len() == 6 {
             Ok(Self(code))
         } else {
-            Err("Invalid 2FA code".to_owned())
+            Err(eyre!("Invalid 2FA code"))
         }
     }
 }

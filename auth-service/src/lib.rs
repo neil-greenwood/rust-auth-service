@@ -17,12 +17,15 @@ use tower_http::{
 };
 use utils::tracing::{make_span_with_request_id, on_request, on_response};
 
-pub mod routes;
-use crate::routes::*;
-pub mod domain;
-use crate::domain::*;
-pub mod app_state;
 use crate::app_state::*;
+use crate::domain::*;
+use crate::routes::{
+    login::login_handler, logout::logout_handler, signup::signup_handler,
+    verify_2fa::verify_2fa_handler, verify_token::verify_token_handler,
+};
+pub mod app_state;
+pub mod domain;
+pub mod routes;
 pub mod services;
 pub mod utils;
 
@@ -83,6 +86,7 @@ pub struct ErrorResponse {
 
 impl IntoResponse for AuthAPIError {
     fn into_response(self) -> Response {
+        log_error_chain(&self);
         let (status, error_message) = match self {
             AuthAPIError::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
             AuthAPIError::IncorrectCredentials => {
@@ -91,7 +95,7 @@ impl IntoResponse for AuthAPIError {
             AuthAPIError::InvalidCredentials => (StatusCode::BAD_REQUEST, "Invalid credentials"),
             AuthAPIError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid auth token"),
             AuthAPIError::MissingToken => (StatusCode::BAD_REQUEST, "Invalid credentials"),
-            AuthAPIError::UnexpectedError => {
+            AuthAPIError::UnexpectedError(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, "Unexpected error")
             }
         };
@@ -100,6 +104,20 @@ impl IntoResponse for AuthAPIError {
         });
         (status, body).into_response()
     }
+}
+
+fn log_error_chain(e: &(dyn Error + 'static)) {
+    let separator =
+        "\n-----------------------------------------------------------------------------------\n";
+    let mut report = format!("{}{:?}\n", separator, e);
+    let mut current = e.source();
+    while let Some(cause) = current {
+        let step = format!("Caused by:\n\n{:?}", cause);
+        report = format!("{}\n{}", report, step);
+        current = cause.source();
+    }
+    report = format!("{}\n{}", report, separator);
+    tracing::error!("{}", report);
 }
 
 pub async fn get_postgres_pool(url: &str) -> Result<PgPool, sqlx::Error> {

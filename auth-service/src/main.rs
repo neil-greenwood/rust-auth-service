@@ -18,7 +18,8 @@ use tokio::sync::RwLock;
 
 #[tokio::main]
 async fn main() {
-    init_tracing();
+    color_eyre::install().expect("Failed to install color_eyre");
+    init_tracing().expect("Failed to initialize tracing");
     let redis_connection = Arc::new(RwLock::new(configure_redis()));
     let banned_token_store = RedisBannedTokenStore::new(redis_connection.clone());
     let two_fa_codes = RedisTwoFACodeStore::new(redis_connection);
@@ -33,8 +34,6 @@ async fn main() {
     );
 
     // Here we are using ip 0.0.0.0 so the service is listening on all the configured network interfaces.
-    // This is needed for Docker to work, which we will add later on.
-    // See: https://stackoverflow.com/questions/39525820/docker-port-forwarding-not-working
     let app = Application::build(app_state, prod::APP_ADDRESS)
         .await
         .expect("Failed to build app");

@@ -13,6 +13,7 @@ pub struct ValidateTokenResponse {
     pub message: String,
 }
 
+#[tracing::instrument(name = "Verify JWT Token", skip_all)]
 pub async fn verify_token_handler(
     State(state): State<AppState>,
     Json(request): Json<VerifyTokenRequest>,
