@@ -3,6 +3,7 @@ use auth_service::{
     utils::constants::JWT_COOKIE_NAME,
 };
 use fake::{faker::internet::en::Password as FakePassword, Fake};
+use secrecy::{ExposeSecret, SecretString};
 use test_helpers::api_test;
 
 use crate::helpers::TestApp;
@@ -53,11 +54,13 @@ async fn should_return_400_if_invalid_input() {
 #[api_test]
 async fn should_return_401_if_incorrect_credentials() {
     let random_email = TestApp::get_random_email();
-    let password = HashedPassword::parse(FakePassword(10..12).fake())
+    let fake: String = FakePassword(10..12).fake();
+    let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
         .await
         .unwrap();
-    let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
-    let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
+    let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref().expose_secret(), "requires2FA": true});
+    let login_request =
+        serde_json::json!({"email": random_email, "password": password.as_ref().expose_secret()});
     app.post_signup(&signup_request).await;
     let _response = app.post_login(&login_request).await;
     let first_code = app
@@ -81,11 +84,13 @@ async fn should_return_401_if_old_code() {
     // Call login twice. Then attempt to call verify-2fa with the 2FA code from
     // the first login request. This should fail.
     let random_email = TestApp::get_random_email();
-    let password = HashedPassword::parse(FakePassword(10..12).fake())
+    let fake: String = FakePassword(10..12).fake();
+    let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
         .await
         .unwrap();
-    let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
-    let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
+    let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref().expose_secret(), "requires2FA": true});
+    let login_request =
+        serde_json::json!({"email": random_email, "password": password.as_ref().expose_secret()});
     app.post_signup(&signup_request).await;
     let _response1 = app.post_login(&login_request).await;
     let first_code = app
@@ -109,11 +114,13 @@ async fn should_return_401_if_old_code() {
 #[api_test]
 async fn should_return_200_if_credentials_are_valid() {
     let random_email = TestApp::get_random_email();
-    let password = HashedPassword::parse(FakePassword(10..12).fake())
+    let fake: String = FakePassword(10..12).fake();
+    let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
         .await
         .unwrap();
-    let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref(), "requires2FA": true});
-    let login_request = serde_json::json!({"email": random_email, "password": password.as_ref()});
+    let signup_request = serde_json::json!({"email": random_email, "password": password.as_ref().expose_secret(), "requires2FA": true});
+    let login_request =
+        serde_json::json!({"email": random_email, "password": password.as_ref().expose_secret()});
     app.post_signup(&signup_request).await;
     let _response = app.post_login(&login_request).await;
     let first_code = app

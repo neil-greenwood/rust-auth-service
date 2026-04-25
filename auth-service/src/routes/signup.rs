@@ -1,4 +1,5 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -39,7 +40,7 @@ pub async fn signup_handler(
 #[derive(Deserialize)]
 pub struct SignupRequest {
     pub email: String,
-    pub password: String,
+    pub password: SecretString,
     #[serde(rename = "requires2FA")]
     pub requires_2fa: bool,
 }

@@ -1,3 +1,4 @@
+use secrecy::SecretString;
 use std::collections::HashMap;
 
 use crate::{
@@ -35,7 +36,11 @@ impl UserStore for HashmapUserStore {
         }
     }
 
-    async fn validate_user(&self, email: &Email, raw_password: &str) -> Result<(), UserStoreError> {
+    async fn validate_user(
+        &self,
+        email: &Email,
+        raw_password: &SecretString,
+    ) -> Result<(), UserStoreError> {
         match self.users.get(email) {
             Some(user) => user
                 .password
@@ -61,7 +66,8 @@ mod tests {
     #[tokio::test]
     async fn should_add_unique_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = HashedPassword::parse(FakePassword(10..12).fake())
+        let fake: String = FakePassword(10..12).fake();
+        let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
             .await
             .unwrap();
         let user = User {
@@ -79,7 +85,8 @@ mod tests {
     #[tokio::test]
     async fn should_refuse_to_add_duplicate_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = HashedPassword::parse(FakePassword(10..12).fake())
+        let fake: String = FakePassword(10..12).fake();
+        let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
             .await
             .unwrap();
         let user = User {
@@ -105,7 +112,8 @@ mod tests {
     #[tokio::test]
     async fn should_get_existing_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = HashedPassword::parse(FakePassword(10..12).fake())
+        let fake: String = FakePassword(10..12).fake();
+        let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
             .await
             .unwrap();
         let mut store = HashmapUserStore::new();
@@ -124,7 +132,8 @@ mod tests {
     #[tokio::test]
     async fn should_refuse_to_get_missing_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = HashedPassword::parse(FakePassword(10..12).fake())
+        let fake: String = FakePassword(10..12).fake();
+        let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
             .await
             .unwrap();
         let mut store = HashmapUserStore::new();
@@ -145,7 +154,8 @@ mod tests {
     #[tokio::test]
     async fn should_refuse_to_validate_unknown_user() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = HashedPassword::parse(FakePassword(10..12).fake())
+        let fake: String = FakePassword(10..12).fake();
+        let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
             .await
             .unwrap();
         let mut store = HashmapUserStore::new();
@@ -157,7 +167,12 @@ mod tests {
         store.users.insert(email.clone(), user.clone());
 
         let actual_email = Email::parse(SafeEmail().fake()).unwrap();
-        let result = store.validate_user(&actual_email, "password").await;
+        let result = store
+            .validate_user(
+                &actual_email,
+                &SecretString::new("password".to_string().into_boxed_str()),
+            )
+            .await;
 
         assert_eq!(result.unwrap_err(), UserStoreError::InvalidCredentials);
     }
@@ -165,7 +180,8 @@ mod tests {
     #[tokio::test]
     async fn should_refuse_to_validate_user_with_incorrect_creds() {
         let email = Email::parse(SafeEmail().fake()).unwrap();
-        let password = HashedPassword::parse(FakePassword(10..12).fake())
+        let fake: String = FakePassword(10..12).fake();
+        let password = HashedPassword::parse(SecretString::new(fake.into_boxed_str()))
             .await
             .unwrap();
         let mut store = HashmapUserStore::new();
@@ -176,7 +192,12 @@ mod tests {
         };
         store.users.insert(email.clone(), user.clone());
 
-        let result = store.validate_user(&email, "password").await;
+        let result = store
+            .validate_user(
+                &email,
+                &SecretString::new("password".to_string().into_boxed_str()),
+            )
+            .await;
 
         assert_eq!(result.unwrap_err(), UserStoreError::InvalidCredentials);
     }

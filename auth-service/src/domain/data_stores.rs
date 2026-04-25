@@ -1,5 +1,6 @@
 use color_eyre::eyre::{eyre, Context, Report, Result};
 use rand::Rng;
+use secrecy::SecretString;
 use serde::Serialize;
 use thiserror::Error;
 use uuid::Uuid;
@@ -10,7 +11,11 @@ use super::{Email, User};
 pub trait UserStore {
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError>;
     async fn get_user(&self, email: &Email) -> Result<User, UserStoreError>;
-    async fn validate_user(&self, email: &Email, raw_password: &str) -> Result<(), UserStoreError>;
+    async fn validate_user(
+        &self,
+        email: &Email,
+        raw_password: &SecretString,
+    ) -> Result<(), UserStoreError>;
 }
 
 #[derive(Debug, Error)]
