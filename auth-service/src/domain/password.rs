@@ -34,7 +34,7 @@ impl HashedPassword {
 
     #[tracing::instrument(name = "HashedPassword parse password hash", skip_all)]
     pub fn parse_password_hash(hash: SecretString) -> Result<HashedPassword> {
-        if let Ok(hashed_string) = PasswordHash::new(hash.expose_secret().as_ref()) {
+        if let Ok(hashed_string) = PasswordHash::new(hash.expose_secret()) {
             Ok(Self(SecretString::new(
                 hashed_string.to_string().into_boxed_str(),
             )))
