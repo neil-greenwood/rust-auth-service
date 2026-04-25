@@ -1,7 +1,6 @@
 use color_eyre::eyre::{eyre, Context, Report, Result};
 use rand::Rng;
-use secrecy::SecretString;
-use serde::Serialize;
+use secrecy::{ExposeSecret, SecretString};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -44,8 +43,8 @@ impl PartialEq for UserStoreError {
 
 #[async_trait::async_trait]
 pub trait BannedTokenStore {
-    async fn add_token(&mut self, token: String) -> Result<(), BannedTokenStoreError>;
-    async fn check_token(&self, token: &str) -> Result<bool, BannedTokenStoreError>;
+    async fn add_token(&mut self, token: SecretString) -> Result<(), BannedTokenStoreError>;
+    async fn check_token(&self, token: &SecretString) -> Result<bool, BannedTokenStoreError>;
 }
 
 #[derive(Debug, Error)]
@@ -87,36 +86,52 @@ impl PartialEq for TwoFACodeStoreError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
-pub struct LoginAttemptId(String);
+#[derive(Debug, Clone)]
+pub struct LoginAttemptId(SecretString);
+
+impl PartialEq for LoginAttemptId {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.expose_secret() == other.0.expose_secret()
+    }
+}
 
 impl LoginAttemptId {
     pub fn parse(id: String) -> Result<Self> {
         let parsed_value = Uuid::parse_str(&id).wrap_err("Invalid login attempt ID")?;
-        Ok(Self(parsed_value.to_string()))
+        Ok(Self(SecretString::new(
+            parsed_value.to_string().into_boxed_str(),
+        )))
     }
 }
 
 impl Default for LoginAttemptId {
     fn default() -> Self {
-        Self(Uuid::new_v4().to_string())
+        Self(SecretString::new(
+            Uuid::new_v4().to_string().into_boxed_str(),
+        ))
     }
 }
 
-impl AsRef<str> for LoginAttemptId {
-    fn as_ref(&self) -> &str {
+impl AsRef<SecretString> for LoginAttemptId {
+    fn as_ref(&self) -> &SecretString {
         &self.0
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct TwoFACode(String);
+#[derive(Debug, Clone)]
+pub struct TwoFACode(SecretString);
+
+impl PartialEq for TwoFACode {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.expose_secret() == other.0.expose_secret()
+    }
+}
 
 impl TwoFACode {
     pub fn parse(code: String) -> Result<Self> {
         let _code_as_u32 = code.parse::<u32>().wrap_err("Invalid 2FA code")?;
         if code.len() == 6 {
-            Ok(Self(code))
+            Ok(Self(SecretString::new(code.into_boxed_str())))
         } else {
             Err(eyre!("Invalid 2FA code"))
         }
@@ -125,12 +140,14 @@ impl TwoFACode {
 
 impl Default for TwoFACode {
     fn default() -> Self {
-        Self(format!("{:06}", rand::rng().random_range(0..=999_999)))
+        Self(SecretString::new(
+            format!("{:06}", rand::rng().random_range(0..=999_999)).into_boxed_str(),
+        ))
     }
 }
 
-impl AsRef<str> for TwoFACode {
-    fn as_ref(&self) -> &str {
+impl AsRef<SecretString> for TwoFACode {
+    fn as_ref(&self) -> &SecretString {
         &self.0
     }
 }
@@ -138,6 +155,7 @@ impl AsRef<str> for TwoFACode {
 #[cfg(test)]
 mod tests {
     use fake::{uuid::UUIDv4, Fake};
+    use secrecy::ExposeSecret;
     use uuid::Uuid;
 
     use super::*;
@@ -146,7 +164,7 @@ mod tests {
     fn login_attempt_id_should_create_a_default() {
         let result = LoginAttemptId::default();
 
-        assert!(Uuid::try_parse(result.as_ref()).is_ok());
+        assert!(Uuid::try_parse(result.as_ref().expose_secret()).is_ok());
     }
 
     #[test]
@@ -183,10 +201,11 @@ mod tests {
     fn two_fa_code_should_create_a_default() {
         let result = TwoFACode::default();
 
-        assert_eq!(result.0.len(), 6);
-        assert!(result.0.parse::<u32>().is_ok());
-        assert_ne!(result.0, "000000");
-        assert_ne!(result.0, "123456");
+        let internal_result = result.0.expose_secret();
+        assert_eq!(internal_result.len(), 6);
+        assert!(internal_result.parse::<u32>().is_ok());
+        assert_ne!(internal_result, "000000");
+        assert_ne!(internal_result, "123456");
     }
 
     #[test]

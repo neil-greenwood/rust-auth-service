@@ -1,5 +1,6 @@
 use auth_service::utils::constants::JWT_COOKIE_NAME;
 use reqwest::Url;
+use secrecy::SecretString;
 use test_helpers::api_test;
 
 use crate::helpers::TestApp;
@@ -43,7 +44,7 @@ async fn should_return_200_if_valid_jwt_cookie() {
         .cookies()
         .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
         .expect("No auth cookie found");
-    let token = auth_cookie.value();
+    let token = SecretString::new(auth_cookie.value().to_string().into_boxed_str());
 
     let response = app.post_logout().await;
     assert_eq!(response.status().as_u16(), 200);
@@ -54,7 +55,7 @@ async fn should_return_200_if_valid_jwt_cookie() {
     assert!(auth_cookie.value().is_empty());
     let banned_token_store = app.banned_tokens.read().await;
     let contains_token = banned_token_store
-        .check_token(token)
+        .check_token(&token)
         .await
         .expect("Failed to check that token store contains logged out token");
     assert!(contains_token);

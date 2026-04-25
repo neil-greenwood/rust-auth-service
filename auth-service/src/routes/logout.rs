@@ -1,5 +1,6 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::{cookie, CookieJar};
+use secrecy::SecretString;
 
 use crate::{
     app_state::AppState,
@@ -16,7 +17,7 @@ pub async fn logout_handler(
         return (jar, Err(AuthAPIError::MissingToken));
     };
 
-    let token = cookie.value().to_owned();
+    let token = SecretString::new(cookie.value().to_owned().into_boxed_str());
     let banned_tokens = state.banned_tokens.clone();
     let Ok(_claims) = validate_token(&token, banned_tokens).await else {
         return (jar, Err(AuthAPIError::InvalidToken));

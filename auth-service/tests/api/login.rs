@@ -1,6 +1,7 @@
 use auth_service::{
     domain::Email, routes::login::TwoFactorAuthResponse, utils::constants::JWT_COOKIE_NAME,
 };
+use secrecy::ExposeSecret;
 use test_helpers::api_test;
 
 use crate::helpers::TestApp;
@@ -142,5 +143,8 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
         .get_code(&Email::parse(random_email).unwrap())
         .await
         .expect("Failed to get 2FA code");
-    assert_eq!(code_tuple.0.as_ref(), json_body.login_attempt_id);
+    assert_eq!(
+        code_tuple.0.as_ref().expose_secret(),
+        &json_body.login_attempt_id
+    );
 }
